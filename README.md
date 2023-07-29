@@ -1,4 +1,4 @@
-- 👋 Hi, I’m @Tanu-ja
+- 👋 Hi, I’m @Tanuja
 - 👀 I’m interested in Wev Development
 - 🌱 I’m currently learning MERN Stack
 - 📫 Reach me @ LinkedIn - https://www.linkedin.com/in/tanuja-raj-974087245/
