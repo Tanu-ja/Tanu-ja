@@ -135,7 +135,7 @@ def get_response():
         print("No 'citations' field found in the tool message content")
 
 
-    return jsonify({"assistant_content": message + " " + url2, "Page-Number": content2})
+    return jsonify({"assistant_content": message , "Page-Number": content2, "url":url2})
     
 
 if __name__ == "__main__":
