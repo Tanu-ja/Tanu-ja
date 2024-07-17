@@ -61,6 +61,8 @@ def get_response():
                         "urlField": "URL",
                         "vectorFields": [],
                     },
+                    "strictness": 5,
+                    "top_n_documents": 10,
                     "inScope": True,
             }
         }
