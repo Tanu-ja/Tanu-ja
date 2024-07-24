@@ -1,18 +1,20 @@
-from flask import Flask, jsonify, request
-import json
-import requests
+from flask import Flask, session, request, jsonify
+from flask_cors import CORS
 import os
-import openai
-from langdetect import detect
+import requests
+import json
 from dotenv import load_dotenv
-from flask_cors import CORS, cross_origin
 
 app = Flask(__name__)
-cors = CORS(app)
-app.config['CORS_HEADERS'] = 'Content-Type'
+app.secret_key = b'\xac\xfe/\xa2\xf9y\xcc\x8d\x87,\x94\xacs\xe3u\xf7L;\xa8h2\xf6}'  # Ensure the secret key is correctly set
+
+# Configure CORS to handle credentials
+CORS(app, resources={r"/*": {"origins": "*"}}, supports_credentials=True)
+
+app.config['SESSION_COOKIE_SAMESITE'] = 'None'
+app.config['SESSION_COOKIE_SECURE'] = True
 
 project_folder = os.path.dirname(__file__)
-
 load_dotenv(os.path.join(project_folder, '.env'))
 
 api_base = os.getenv("API_BASE")
@@ -23,13 +25,34 @@ cognitive_search_key = os.getenv("COGNITIVE_SEARCH_KEY")
 cognitive_search_index_name = os.getenv("COGNITIVE_SEARCH_INDEX_NAME")
 OPENAI_URL = f"{api_base}/openai/deployments/{deployment_id}/extensions/chat/completions?api-version=2023-06-01-preview"
 
-
 @app.route("/")
+def home():
+    return "<center><h1>Flask App deployment on AZURE</h1></center>"
+
+@app.route('/input')
 def index():
-    return f"<center><h1>Flask App deployment on AZURE</h1></center"
+    if 'username' in session and 'email' in session:
+        username = session['username']
+        email = session['email']
+        return f'Logged in as {username} with email {email}'
+    return 'You are not logged in'
+
+@app.route('/login', methods=['POST'])
+def login():
+    if request.method == 'POST':
+        data = request.get_json()  # This will parse the JSON data from the request
+        if data:
+            username1=data.get('username')
+            session['username'] = data.get('username')
+            session['email'] = data.get('email')
+            print(f"Session Data: {session}")
+            print(f"Username: {session.get('username')}") 
+            return jsonify({'message': 'Login successful','username': username1})
+        else:
+            return jsonify({'message': 'Invalid request data'}), 400
+    return jsonify({'message': 'Invalid method'}), 405
 
 @app.route("/get_response", methods=["POST"])
-@cross_origin()
 def get_response():
     url = OPENAI_URL
 
@@ -39,20 +62,19 @@ def get_response():
     }
     user_input = request.get_json().get("message")
 
-   
     body = {
-    "temperature": 0,
-    "max_tokens": 2000,
-    "top_p": 1.0,
-    "stream": False,
-    "dataSources": [
-        {
-            "type": "AzureCognitiveSearch",
-            "parameters": {
-                "endpoint": cognitive_search_endpoint,
-                "key": cognitive_search_key,
-                "indexName": cognitive_search_index_name,
-                "queryType": "simple",
+        "temperature": 0,
+        "max_tokens": 2000,
+        "top_p": 1.0,
+        "stream": False,
+        "dataSources": [
+            {
+                "type": "AzureCognitiveSearch",
+                "parameters": {
+                    "endpoint": cognitive_search_endpoint,
+                    "key": cognitive_search_key,
+                    "indexName": cognitive_search_index_name,
+                    "queryType": "simple",
                     "fieldsMapping": {
                         "contentFieldsSeparator": "\n",
                         "contentFields": ["page_content"],
@@ -61,82 +83,49 @@ def get_response():
                         "urlField": "URL",
                         "vectorFields": [],
                     },
-                    "strictness": 5,
-                    "top_n_documents": 10,
+                    "strictness": 3,
+                    "top_n_documents": 5,
                     "inScope": True,
+                }
             }
-        }
-    ],
-    "messages": [
-        {
-            "role": "user",
-            "content": user_input
-        }
-    ]
-}
+        ],
+        "messages": [
+            {
+                "role": "user",
+                "content": user_input
+            }
+        ]
+    }
 
     response = requests.post(url, headers=headers, json=body)
-
     json_response = response.json()
     print(json_response)
 
     message = json_response["choices"][0]["messages"][1]["content"]
-    
-
-
     tool_message_content = json_response["choices"][0]["messages"][0]["content"]
-
-    # Converting the content string to a dictionary
 
     tool_message_content_dict = json.loads(tool_message_content)
 
-    # Extracting the 'citations' field if present
     url2 = ""
     if "citations" in tool_message_content_dict:
         citations = tool_message_content_dict["citations"]
-        
-
-        # Extracting the URL from the first citation if present
-
         if citations:
             first_citation = citations[0]
-
             if "url" in first_citation:
                 url2 = first_citation["url"]
-
-                # print(url2)
-
-            else:
-                print("No URL found in the first citation")
-
-        else:
-            print("No citations found")
-    else:
-        print("No 'citations' field found in the tool message content")
-        
-
-
 
     content2 = ""
     if "citations" in tool_message_content_dict:
         citations = tool_message_content_dict["citations"]
-        
-        # Extracting the URL from the first citation if present
         if citations:
             first_citation = citations[0]
-
             if "filepath" in first_citation:
                 content2 = first_citation["filepath"]
-            else:
-                print("No Content found in the first citation")
-        else:
-            print("No citations found")
-    else:
-        print("No 'citations' field found in the tool message content")
 
-
-    return jsonify({"assistant_content": message , "Page-Number": content2, "url":url2})
+    # Get username from session
     
 
-if __name__ == "__main__":
-    app.run()
+    return jsonify({"assistant_content": message, "Page-Number": content2, "url": url2})
+
+if __name__ == '__main__':
+    app.run(debug=True)
