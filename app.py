@@ -9,7 +9,7 @@ app = Flask(__name__)
 app.secret_key = b'\xac\xfe/\xa2\xf9y\xcc\x8d\x87,\x94\xacs\xe3u\xf7L;\xa8h2\xf6}'  # Ensure the secret key is correctly set
 
 # Configure CORS to handle credentials
-CORS(app, resources={r"/*": {"origins": "http://127.0.0.1:5500"}}, supports_credentials=True)
+CORS(app, resources={r"/*": {"origins": "*"}}, supports_credentials=True)
 
 app.config['SESSION_COOKIE_SAMESITE'] = 'None'
 app.config['SESSION_COOKIE_SECURE'] = False
