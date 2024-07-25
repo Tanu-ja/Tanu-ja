@@ -13,6 +13,7 @@ CORS(app, resources={r"/*": {"origins": "http://127.0.0.1:5500"}}, supports_cred
 
 app.config['SESSION_COOKIE_SAMESITE'] = 'None'
 app.config['SESSION_COOKIE_SECURE'] = False
+app.config['CORS_HEADERS'] = 'Content-Type'
 
 project_folder = os.path.dirname(__file__)
 load_dotenv(os.path.join(project_folder, '.env'))
